@@ -2,173 +2,256 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>IOT 地图</title>
 
-    <script src='https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js'></script>
-    <script src='https://cdn.bootcss.com/d3/5.15.1/d3.min.js'></script>
-
+    <style>
+        body{background-image: url(images/nybj.png);background-size:100% 100%;font-weight:bold;font-family:苹方;overflow: hidden;}
+    </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA==" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA==" crossorigin=""></script>
-
-    <script>
-        $(document).ready(function () {
-            function lineShow(d) {
-                d3.select('#select').attr('visibility', 'hidden').attr('id', 'noselect');
-                d3.select(`.${d['省份']}`).attr('visibility', 'visible').attr('id', 'select');
-            }
-            function lineHide(d) {
-                //d3.select(`.${d['省份']}`).attr('visibility', 'hidden')
-            }
-
-            var map = L
-                .map('graph1')
-                .setView([30, 120], 5);   // center position + zoom
-
-// Add a tile to the map = a background. Comes from OpenStreetmap
-            L.tileLayer(
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
-                    maxZoom: 6,
-                }).addTo(map);
-
-// Add a svg layer to the map
-            L.svg().addTo(map);
-
-// Create data for circles:
-            var Data = $.ajax({ url: 'plantLocation.csv', async: false });
-            Data = Data.responseText;
-            Data = d3.csvParse(Data);
-
-            /*var tmp = [];
-            for (var i = 0; i < 100; i++){
-                var ran = Math.floor(Math.random() * Data.length);
-                tmp.push(Data.splice(ran, 1)[0]);
-            }
-            Data = tmp;*/
-
-            for (var i in Data){
-                if (Data[i]['类型']==='核电'){
-                    var tmp = Data[i].long;
-                    Data[i].long = Data[i].lat;
-                    Data[i].lat = tmp;
-                }
-            }
-            var markers = Data;
-            var province = d3.map(Data, d=>d['省份']).keys();
-            var provinceLocation = {};
-            for (var i in province){
-                for (var j in Data){
-                    if (Data[j]['省份']===province[i]){
-                        provinceLocation[province[i]]=Data[j];
-                    }
-                }
-            }
-
-// Select the svg area and add circles:
-            d3.select("#graph1").select("svg").attr('pointer-events', 'all').style('z-index', '999').style('cursor', 'default');
-            d3.select("#graph1")
-                .select("svg")
-                .append('g').attr('class', 'circle')
-                .selectAll("myCircles")
-                .data(markers)
-                .enter()
-                .append("circle")
-                .attr("cx", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).x })
-                .attr("cy", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).y })
-                .attr("r", 5)
-                .style("fill", "red")
-                .attr("fill-opacity", .4)
-
-            d3.select("#graph1")
-                .select("svg")
-                .append('g').attr('class', 'clickcircle')
-                .selectAll("myCircles")
-                .data(markers)
-                .enter()
-                .append("circle")
-                .attr("cx", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).x })
-                .attr("cy", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).y })
-                .attr("r", 20)
-                .style("fill", "none")
-                .on("mouseover", lineShow)
-                .on("mouseout", lineHide);
-
-            d3.select("#graph1")
-                .select("svg")
-                .append('g').attr('class', 'line')
-                .selectAll('g')
-                .data(province)
-                .join('g').attr('class', d=>d).attr('visibility', 'hidden')
-                .selectAll('line')
-                .data(function (d) {
-                    var partData = [];
-                    for (var i in markers){
-                        if (markers[i]['省份']===d){
-                            partData.push(markers[i]);
-                        }
-                    }
-                    return partData;
-                })
-                .join('line')
-                .attr('x1', d=>map.latLngToLayerPoint([d.lat, d.long]).x).attr('y1', d=>map.latLngToLayerPoint([d.lat, d.long]).y)
-                .attr('x2', function (d) {
-                    var loc = provinceLocation[d['省份']];
-                    return map.latLngToLayerPoint([loc.lat, loc.long]).x;
-                })
-                .attr('y2', function (d) {
-                    var loc = provinceLocation[d['省份']];
-                    return map.latLngToLayerPoint([loc.lat, loc.long]).y;
-                })
-                .attr('stroke', 'steelblue').attr('stroke-width', '1px').attr('opacity', '60%');
-            for (var i in provinceLocation){
-                if (i==='北京市'){
-                    var center = provinceLocation[i];
-                }
-            }
-            d3.select("#graph1")
-                .select("svg")
-                .append('g').attr('class', 'centerLine')
-                .selectAll('line')
-                .data(d3.entries(provinceLocation))
-                .join('line')
-                .attr('x1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).x).attr('y1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).y)
-                .attr('x2', d=>map.latLngToLayerPoint([center.lat, center.long]).x).attr('y2', d=>map.latLngToLayerPoint([center.lat, center.long]).y)
-                .attr('stroke', 'steelblue').attr('stroke-width', '2px').attr('opacity', '60%');
-// Function that update circle position if something change
-            function update() {
-                d3.select('#graph1')
-                    .selectAll("circle")
-                    .attr("cx", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).x })
-                    .attr("cy", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).y })
-                d3.select('#graph1').select('.line')
-                    .selectAll('line')
-                    .attr('x1', d=>map.latLngToLayerPoint([d.lat, d.long]).x).attr('y1', d=>map.latLngToLayerPoint([d.lat, d.long]).y)
-                    .attr('x2', function (d) {
-                        var loc = provinceLocation[d['省份']];
-                        return map.latLngToLayerPoint([loc.lat, loc.long]).x;
-                    })
-                    .attr('y2', function (d) {
-                        var loc = provinceLocation[d['省份']];
-                        return map.latLngToLayerPoint([loc.lat, loc.long]).y;
-                    });
-                d3.select('#graph1')
-                    .select('.centerLine')
-                    .selectAll('line')
-                    .attr('x1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).x).attr('y1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).y)
-                    .attr('x2', d=>map.latLngToLayerPoint([center.lat, center.long]).x).attr('y2', d=>map.latLngToLayerPoint([center.lat, center.long]).y)
-            }
-
-// If the user change the map (zoom or drag), I update circle position:
-            map.on("moveend", update)
-
-
-            var Data = $.ajax({ url: 'plantLocation.csv', async: false });
-            Data = Data.responseText;
-            Data = d3.csvParse(Data);
-        })
-    </script>
+    <link rel="stylesheet" href="layui/css/layui.css">
 </head>
 <body>
-<div id="graph1" style="z-index: 300; width: 1500px; height: 1000px"></div>
+
+<div class="main_content">
+    <div id="graph1" style="z-index: 300; width: 1000px; height: 600px; float: left; margin: 10px; box-shadow: 0 0 0 #dddddd; padding: 5px;"></div>
+
+    <div id="select_type" style="float: left;">
+        <button class="button_type layui-btn" id="火电">A</button>
+        <br><br>
+        <button class="button_type layui-btn" id="风电">B</button>
+        <br><br>
+        <button class="button_type layui-btn" id="水电">C</button>
+        <br><br>
+        <button class="button_type layui-btn" id="光伏">D</button>
+        <br><br>
+        <button class="button_type layui-btn" id="核电">E</button>
+        <br><br>
+        <button class="button_type layui-btn layui-btn-normal" id="all_type">ALL</button>
+        <br><br>
+        <button class="detail layui-btn layui-btn-normal" id="more_detail" onclick="go2detail()">查看详情</button>
+    </div>
+</div>
+
+
 </body>
+<script src='https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js'></script>
+<script src='https://cdn.bootcss.com/d3/5.15.1/d3.min.js'></script>
+<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js" integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA==" crossorigin=""></script>
+<script src="layui/layui.js"></script>
+<script>
+    const api_host = 'http://10.10.10.1:8010'
+    let rawData = []
+    let cur_status = 'all_type';
+    function GetRequest(name) {
+        let url = window.location.search; //获取url中"?"符后的字串
+        if (url.indexOf("?") !== -1) {
+            let str = url.substr(1);
+            if(str.indexOf("#")!== -1){
+                str = str.substr(0);
+            }
+            let strs = str.split("&");
+            for(let i = 0; i < strs.length; i ++) {
+                if(strs[i].indexOf(name) !== -1){
+                    return strs[i].split("=")[1];
+                }
+            }
+        }
+        return null;
+    }
+    window.onload = function (){
+        $.ajax({
+            url: api_host + '/gen_data',
+            type: 'POST',
+            dataType: 'json',
+            data: {'input_num': GetRequest('input_num')},
+            success: function(res){
+                console.log(res);
+                rawData = res['data'];
+                generate(rawData);
+            },
+            error: function(res){
+                alert('Network Error');
+            }
+        });
+    }
+</script>
+
+<script>
+    let map = L
+        .map('graph1')
+        .setView([36, 105], 4);   // center position + zoom
+    L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+            maxZoom: 6,
+        }).addTo(map);
+    // Add a svg layer to the map
+    L.svg().addTo(map);
+
+    function getColor(button_type){
+        let color = ['#ff0000',
+            '#ff7700',
+            '#00ff4c',
+            '#00a0b1',
+            '#0055ff']
+        if(button_type === '火电')return color[0];
+        else if(button_type === '风电')return  color[1];
+        else if(button_type === '水电')return  color[2];
+        else if(button_type === '光伏')return  color[3];
+        else if(button_type === '核电')return  color[4];
+    }
+
+    function generate(Data){
+        function lineShow(d) {
+            d3.select('#select').attr('visibility', 'hidden').attr('iot_iid', 'noselect');
+            d3.select(`.${d['province']}`).attr('visibility', 'visible').attr('iot_iid', 'select');
+        }
+        function lineHide(d) {
+            //d3.select(`.${d['province']}`).attr('visibility', 'hidden')
+        }
+        /*
+        for (var i in Data){
+            if (Data[i]['type']==='核电'){
+                var tmp = Data[i].long;
+                Data[i].long = Data[i].lat;
+                Data[i].lat = tmp;
+            }
+        }
+        var markers = Data;
+        var province = d3.map(Data, d=>d['province']).keys();
+        var provinceLocation = {};
+        for (var i in province){
+            for (var j in Data){
+                if (Data[j]['province']===province[i]){
+                    provinceLocation[province[i]]=Data[j];
+                }
+            }
+        }*/
+
+        // Select the svg area and add circles:
+        var markers = Data;
+        d3.select("#graph1").select("svg").attr('pointer-events', 'all').style('z-index', '999').style('cursor', 'default');
+        d3.select("#graph1")
+            .select("svg")
+            .append('g').attr('class', 'circle')
+            .selectAll("myCircles")
+            .data(markers)
+            .enter()
+            .append("circle")
+            .attr("cx", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).x })
+            .attr("cy", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).y })
+            .attr("r", 5)
+            .style("fill", function (d){return getColor(d.type)})
+            .attr("fill-opacity", .4)
+
+        d3.select("#graph1")
+            .select("svg")
+            .append('g').attr('class', 'clickcircle')
+            .selectAll("myCircles")
+            .data(markers)
+            .enter()
+            .append("circle")
+            .attr("cx", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).x })
+            .attr("cy", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).y })
+            .attr("r", 20)
+            .style("fill", "none")
+            .on("mouseover", lineShow)
+            .on("mouseout", lineHide);
+    /*
+    d3.select("#graph1")
+        .select("svg")
+        .append('g').attr('class', 'line')
+        .selectAll('g')
+        .data(province)
+        .join('g').attr('class', d=>d).attr('visibility', 'hidden')
+        .selectAll('line')
+        .data(function (d) {
+            var partData = [];
+            for (var i in markers){
+                if (markers[i]['province']===d){
+                    partData.push(markers[i]);
+                }
+            }
+            return partData;
+        })
+        .join('line')
+        .attr('x1', d=>map.latLngToLayerPoint([d.lat, d.long]).x).attr('y1', d=>map.latLngToLayerPoint([d.lat, d.long]).y)
+        .attr('x2', function (d) {
+            var loc = provinceLocation[d['province']];
+            return map.latLngToLayerPoint([loc.lat, loc.long]).x;
+        })
+        .attr('y2', function (d) {
+            var loc = provinceLocation[d['province']];
+            return map.latLngToLayerPoint([loc.lat, loc.long]).y;
+        })
+        .attr('stroke', 'steelblue').attr('stroke-width', '1px').attr('opacity', '60%');
+    for (var i in provinceLocation){
+        if (i==='北京市'){
+            var center = provinceLocation[i];
+        }
+    }
+    d3.select("#graph1")
+        .select("svg")
+        .append('g').attr('class', 'centerLine')
+        .selectAll('line')
+        .data(d3.entries(provinceLocation))
+        .join('line')
+        .attr('x1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).x).attr('y1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).y)
+        .attr('x2', d=>map.latLngToLayerPoint([center.lat, center.long]).x).attr('y2', d=>map.latLngToLayerPoint([center.lat, center.long]).y)
+        .attr('stroke', 'steelblue').attr('stroke-width', '2px').attr('opacity', '60%');
+     */
+
+    // Function that update circle position if something change
+    function update() {
+        d3.select('#graph1')
+            .selectAll("circle")
+            .attr("cx", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).x })
+            .attr("cy", function(d){ return map.latLngToLayerPoint([d.lat, d.long]).y })
+        /*
+        d3.select('#graph1').select('.line')
+            .selectAll('line')
+            .attr('x1', d=>map.latLngToLayerPoint([d.lat, d.long]).x).attr('y1', d=>map.latLngToLayerPoint([d.lat, d.long]).y)
+            .attr('x2', function (d) {
+                var loc = provinceLocation[d['province']];
+                return map.latLngToLayerPoint([loc.lat, loc.long]).x;
+            })
+            .attr('y2', function (d) {
+                var loc = provinceLocation[d['province']];
+                return map.latLngToLayerPoint([loc.lat, loc.long]).y;
+            });
+        d3.select('#graph1')
+            .select('.centerLine')
+            .selectAll('line')
+            .attr('x1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).x).attr('y1', d=>map.latLngToLayerPoint([d['value'].lat, d['value'].long]).y)
+            .attr('x2', d=>map.latLngToLayerPoint([center.lat, center.long]).x).attr('y2', d=>map.latLngToLayerPoint([center.lat, center.long]).y)
+
+         */
+    }
+
+    // If the user change the map (zoom or drag), I update circle position:
+    map.on("moveend", update)
+
+
+    //var Data = $.ajax({ url: 'plantLocation.csv', async: false });
+    //Data = Data.responseText;
+    //Data = d3.csvParse(Data);
+}
+
+
+    $(".button_type").click(function(e){
+        let tmpData = rawData.filter(function(item) {
+            cur_status = e.target.id;
+            if(e.target.id === "all_type") return true;
+            return item['type'] === e.target.id;
+        });
+        d3.selectAll("#graph1").selectAll("g").remove();
+        d3.selectAll("#graph1").selectAll("circle").remove();
+        document.getElementById('more_detail').innerText = "查看详情 (" + e.target.id + ")";
+        generate(tmpData);
+    });
+
+    function go2detail(){
+        window.location.href = "dashboard.html?cur_status=" + cur_status;
+    }
+</script>
 </html>

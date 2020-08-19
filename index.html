@@ -2,16 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>入口</title>
     <style>
         body{background-image: url(images/nybj.png);background-size:100% 100%;font-weight:bold;font-family:苹方;overflow: hidden;}
     </style>
+    <link rel="stylesheet" href="layui/css/layui.css">
 </head>
 <body style="margin-top: 20%">
-<div style="text-align: center; color: white">
-    <p>坐标生成数量：<input type="text" name="number"></p>
-    <button>确定</button>
+<div style="text-align: center; color: white; width: 200px; margin: auto;">
+    <input type="text" name="title" id="input_num" placeholder="坐标生成数量 > 400" autocomplete="off" class="layui-input">
+    <br>
+    <button type="button" class="layui-btn" onclick="start()">提交</button>
 </div>
 
 </body>
+
+<script src="layui/layui.js"></script>
+<script>
+function start(){
+    let input_num = document.getElementById('input_num').value;
+    window.location.href = "iotmap.html?input_num=" + input_num;
+}
+</script>
 </html>

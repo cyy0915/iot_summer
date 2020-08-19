@@ -1,3 +1,23 @@
+const api_host = 'http://10.10.10.1:8010'
+document.getElementById('type_title').innerHTML = decodeURI(GetRequest('cur_status'));
+
+function GetRequest(name) {
+	let url = window.location.search; //获取url中"?"符后的字串
+	if (url.indexOf("?") !== -1) {
+		let str = url.substr(1);
+		if(str.indexOf("#")!== -1){
+			str = str.substr(0);
+		}
+		let strs = str.split("&");
+		for(let i = 0; i < strs.length; i ++) {
+			if(strs[i].indexOf(name) !== -1){
+				return strs[i].split("=")[1];
+			}
+		}
+	}
+	return null;
+}
+
 function drawLayer02Label(canvasObj,text,textBeginX,lineEndX){
 	var colorValue = '#04918B';
 
@@ -23,27 +43,9 @@ function drawLayer02Label(canvasObj,text,textBeginX,lineEndX){
 
 //接入占比
 
-var COLOR = {
-	MACHINE:{
-		TYPE_A:'#0175EE',
-		TYPE_B:'#D89446',
-		TYPE_C:'#373693',
-		TYPE_D:'#25AE4F',
-		TYPE_E:'#06B5C6',
-		TYPE_F:'#009E9A',
-		TYPE_G:'#AC266F'
-	}
-};
 
-function renderLegend(){
-	drawLegend(COLOR.MACHINE.TYPE_A,25,'A');
-	drawLegend(COLOR.MACHINE.TYPE_B,50,'B');
-	drawLegend(COLOR.MACHINE.TYPE_C,75,'C');
-	drawLegend(COLOR.MACHINE.TYPE_D,100,'D');
-	drawLegend(COLOR.MACHINE.TYPE_E,125,'E');
-	drawLegend(COLOR.MACHINE.TYPE_F,150,'F');
-	drawLegend(COLOR.MACHINE.TYPE_G,175,'G');
-}
+
+
 
 function drawLegend(pointColor,pointY,text){
 	var ctx = $("#layer03_left_01 canvas").get(0).getContext("2d");
@@ -101,57 +103,89 @@ function drawLayer03Right(canvasObj,colorValue,rate){
 
 
 function renderChartBar01(){
-	renderLegend();
+	let color_machine = ['#0175EE',
+		'#D89446',
+		'#373693',
+		'#25AE4F',
+		'#06B5C6',
+		'#009E9A',
+		'#AC266F']
 
-	var chartData = [7,6,5,4,3,2,1];
-	var myChart = echarts.init(document.getElementById("layer03_left_02"));
-		myChart.setOption(
-					 {
-						title : {
-							text: '',
-							subtext: '',
-							x:'center'
-						},
-						tooltip : {
-							trigger: 'item',
-							formatter: "{b} : {d}%"
-						},
-						legend: {
-							show:false,
-							x : 'center',
-							y : 'bottom',
-							data:['A','B','C','D','E','F','G']
-						},
-						toolbox: {
-						},
-						label:{
-							normal:{
-								show: true, 
-								formatter: "{b} \n{d}%"
-							} 
-						},
-						calculable : true,
-						color:[COLOR.MACHINE.TYPE_A,COLOR.MACHINE.TYPE_B,COLOR.MACHINE.TYPE_C,COLOR.MACHINE.TYPE_D,COLOR.MACHINE.TYPE_E,COLOR.MACHINE.TYPE_F,COLOR.MACHINE.TYPE_G],
-						series : [
-							{
-								name:'',
-								type:'pie',
-								radius : [40, 80],
-								center : ['50%', '50%'],
-								//roseType : 'area',
-								data:[
-									{value:chartData[0], name:'A'},
-									{value:chartData[1], name:'B'},
-									{value:chartData[2], name:'C'},
-									{value:chartData[3], name:'D'},
-									{value:chartData[4], name:'E'},
-									{value:chartData[5], name:'F'},
-									{value:chartData[6], name:'G'}
-								]
-							}
-						]
-					}
-		);
+	let chartData = [];
+	let chartName = []
+	$.ajax({
+		url: api_host + '/province_info',
+		type: 'GET',
+		data: {cur_status: decodeURI(GetRequest('cur_status'))},
+		dataType: 'json',
+		success: function(res){
+			let res_data = res['data']
+			let res_sort = Object.keys(res_data).sort(function(a,b){ return res_data[b] - res_data[a];});
+			let others_total = 0
+			for(let i = 0; i < res_sort.length; i++){
+				if(i < 6){
+					chartData.push(res_data[res_sort[i]]);
+					chartName.push(res_sort[i]);
+				} else others_total += res_data[res_sort[i]];
+			}
+			chartData.push(others_total);
+			chartName.push('其他');
+			for(let i = 0; i < 7; i++){
+				drawLegend(color_machine[i],25 * i + 25,chartName[i]);
+			}
+			let myChart = echarts.init(document.getElementById("layer03_left_02"));
+			myChart.setOption(
+				{
+					title : {
+						text: '',
+						subtext: '',
+						x:'center'
+					},
+					tooltip : {
+						trigger: 'item',
+						formatter: "{b} : {d}%"
+					},
+					legend: {
+						show:false,
+						x : 'center',
+						y : 'bottom',
+						data:chartName,
+					},
+					toolbox: {
+					},
+					label:{
+						normal:{
+							show: true,
+							formatter: "{b} \n{d}%"
+						}
+					},
+					calculable : true,
+					color: color_machine,
+					series : [
+						{
+							name:'',
+							type:'pie',
+							radius : [40, 80],
+							center : ['50%', '50%'],
+							//roseType : 'area',
+							data:[
+								{value:chartData[0], name:chartName[0]},
+								{value:chartData[1], name:chartName[1]},
+								{value:chartData[2], name:chartName[2]},
+								{value:chartData[3], name:chartName[3]},
+								{value:chartData[4], name:chartName[4]},
+								{value:chartData[5], name:chartName[5]},
+								{value:chartData[6], name:chartName[6]}
+							]
+						}
+					]
+				}
+			);
+		},
+		error: function(res){
+			alert('Network Error');
+		}
+	});
 
 }
 
@@ -206,31 +240,30 @@ function renderChartBar02(){
 }*/
 
 function renderLayer04Left(){
-	dataAmountChart = echarts.init(document.getElementById("layer04_left_chart"));
-	dataAmount = [48, 52, 45, 46, 89, 120, 110,100,88,96,88,45,78,67,89,103,104,56,45,104,112,132,120,110,89,95,90,89,102,110,110,50,40,30]
+	let dataAmountChart = echarts.init(document.getElementById("layer04_left_chart"));
+	let dataAmount = [];
+	let dataLength = 34
+	for(let i = 0; i <= dataLength; i++)dataAmount.push(0);
 
-	dataAmountOption =	{
-			title: {
-				text: ''
-			},
-			tooltip : {
-				trigger: 'axis'
-			},
-			legend: {
-				data:[]
-			},
-			grid: {
-				left: '3%',
-				right: '4%',
-				bottom: '5%',
-				top:'4%',
-				containLabel: true
-			},
-			xAxis :
+	let dataAmountOption =	{
+		title: {
+			text: ''
+		},
+		legend: {
+			data:[]
+		},
+		grid: {
+			left: '3%',
+			right: '4%',
+			bottom: '5%',
+			top:'4%',
+			containLabel: true
+		},
+		xAxis :
 			{
 				type : 'category',
 				boundaryGap : false,
-				data : getSeconds(34),
+				data : getSeconds(dataLength),
 				axisLabel:{
 					textStyle:{
 						color:"white", //刻度颜色
@@ -249,7 +282,7 @@ function renderLayer04Left(){
 					}
 				}
 			},
-			yAxis : 
+		yAxis :
 			{
 				type : 'value',
 				axisTick:{show:false},
@@ -257,7 +290,7 @@ function renderLayer04Left(){
 					textStyle:{
 						color:"white", //刻度颜色
 						fontSize:8  //刻度大小
-						}
+					}
 				},
 				axisLine:{
 					show:true,
@@ -271,58 +304,72 @@ function renderLayer04Left(){
 					show:false
 				}
 			},
-			tooltip:{
-				formatter:'{c}',
-				backgroundColor:'#FE8501'
-			},
-			series : [
-				{
-					name:'',
-					type:'line',
-					smooth:true,
-					areaStyle:{
-						normal:{
-							color:new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#026B6F'}, {offset: 1, color: '#012138' }], false),
-							opacity:0.2
-						}
+		tooltip:{
+			formatter:'{c}',
+			backgroundColor:'#FE8501'
+		},
+		series : [
+			{
+				name:'',
+				type:'line',
+				smooth:true,
+				areaStyle:{
+					normal:{
+						color:new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#026B6F'}, {offset: 1, color: '#012138' }], false),
+						opacity:0.2
+					}
+				},
+				itemStyle : {
+					normal : {
+						color:'#009991'
 					},
-					itemStyle : {  
-                            normal : {  
-                                  color:'#009991'
-                            },
-							lineStyle:{
-								normal:{
-								color:'#009895',
-								opacity:1
-							}
+					lineStyle:{
+						normal:{
+							color:'#009895',
+							opacity:1
 						}
-                    },
-					symbol:'none',
-					data:[48, 52, 45, 46, 89, 120, 110,100,88,96,88,45,78,67,89,103,104,56,45,104,112,132,120,110,89,95,90,89,102,110,110,100,90,80]
-				}
-			]
-		};
+					}
+				},
+				symbol:'none',
+			}
+		]
+	};
 	dataAmountChart.setOption(dataAmountOption);
+	function getDataAmount() {
+		$.ajax({
+			url: api_host + '/real_time_data_amount',
+			async:true,
+			type: 'get',
+			success: function (res) {
+				dataAmount.push(res['data']);
+				dataAmount.shift();
+				dataAmountOption.series[0].data = dataAmount;
+				dataAmountOption.xAxis.data = getSeconds(dataLength);
+				dataAmountChart.setOption(dataAmountOption);
+			},
+			error(res){
+				dataAmount.push(0);
+				dataAmount.shift();
+				dataAmountOption.series[0].data = dataAmount;
+				dataAmountOption.xAxis.data = getSeconds(dataLength);
+				dataAmountChart.setOption(dataAmountOption);
+			}
+		})
+	}
+	setInterval(getDataAmount,1000);
 
-
-	setInterval(function () {
-		dataAmount.push(70+parseInt(Math.random()*60));
-		dataAmount.shift();
-		dataAmountOption.series[0].data = dataAmount;
-		dataAmountOption.xAxis.data = getSeconds(34);
-		dataAmountChart.setOption(dataAmountOption);
-	}, 1000)
 }
 
 function renderLayer04Right(){
-	generalDataChart = echarts.init(document.getElementById("layer04_right_chart"));
-	var tmpData1 = [120, 132, 101, 134, 90, 230, 210];
-	var tmpData2 = [220, 182, 191, 234, 290, 330, 310];
-	var tmpData3 = [150, 232, 201, 154, 190, 330, 410];
-	generalData1 = tmpData1.concat(tmpData2, tmpData3);
-	generalData2 = tmpData2.concat(tmpData1, tmpData3);
-	generalData3 = tmpData3.concat(tmpData2, tmpData1);
-	generalDataOption = {
+	let generalDataChart = echarts.init(document.getElementById("layer04_right_chart"));
+	let tmpData1 = [0, 0, 0, 0, 0, 0, 0];
+	let tmpData2 = [0, 0, 0, 0, 0, 0, 0];
+	let tmpData3 = [0, 0, 0, 0, 0, 0, 0];
+	let generalData1 = tmpData1.concat(tmpData2, tmpData3);
+	let generalData2 = tmpData2.concat(tmpData1, tmpData3);
+	let generalData3 = tmpData3.concat(tmpData2, tmpData1);
+	let dataLength = 21;
+	let generalDataOption = {
 			title: {
 				text: ''
 			},
@@ -367,7 +414,7 @@ function renderLayer04Right(){
 						type: 'solid'
 					}
 				},
-				data: getSeconds(21)
+				data: getSeconds(dataLength)
 			},
 			yAxis: {
 				type: 'value',
@@ -443,19 +490,33 @@ function renderLayer04Right(){
 	}
 	generalDataChart.setOption(generalDataOption);
 
-	setInterval(function () {
-		generalData1.push(350+parseInt(Math.random()*100));
-		generalData2.push(250+parseInt(Math.random()*150));
-		generalData3.push(150+parseInt(Math.random()*200));
+	function getDataAmount() {
+		$.ajax({
+			url: api_host + '/real_time_sensor',
+			async:true,
+			type: 'get',
+			success: function (res) {
+				generalData1.push(res['data'][0]);
+				generalData2.push(res['data'][1]);
+				generalData3.push(res['data'][2]);
+			},
+			error(res){
+				generalData1.push(0);
+				generalData2.push(0);
+				generalData3.push(0);
+			}
+		})
 		generalData1.shift();
 		generalData2.shift();
 		generalData3.shift();
-		generalDataOption.xAxis.data = getSeconds(21);
+		generalDataOption.xAxis.data = getSeconds(dataLength);
 		generalDataOption.series[0].data = generalData1;
 		generalDataOption.series[1].data = generalData2;
 		generalDataOption.series[2].data = generalData3;
 		generalDataChart.setOption(generalDataOption);
-	},1000)
+	}
+	setInterval(getDataAmount,1000);
+
 }
 
 function get10MinutesScale()
